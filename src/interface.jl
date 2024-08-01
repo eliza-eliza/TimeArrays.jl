@@ -235,7 +235,7 @@ Type describing a time series with timestamps of type `T` and values of type `V`
 """
 struct TimeArray{T<:TimeLike,V} <: AbstractTimeArray{T,V}
     values::Vector{TimeTick{T,V}}
-    length::Ref{Int64}
+    length::Int64
 
     function TimeArray{T,V}(values::AbstractVector{TimeTick{T,V}} = TimeTick{T,V}[]) where {T<:TimeLike,V}
         issorted(values, by = ta_timestamp) || sort!(values, by = ta_timestamp)
@@ -400,7 +400,7 @@ Base.keytype(::TimeArray{T,V}) where {T,V} = T
 Base.valtype(::TimeArray{T,V}) where {T,V} = V
 Base.eltype(t_array::TimeArray) = eltype(t_array.values)
 
-Base.length(t_array::TimeArray) = t_array.length[]
+Base.length(t_array::TimeArray) = t_array.length
 Base.isempty(t_array::TimeArray) = length(t_array) == 0 || isempty(ta_values(t_array))
 Base.size(t_array::TimeArray) = size(ta_values(t_array))
 Base.IndexStyle(::Type{TimeArray}) = Base.IndexLinear()

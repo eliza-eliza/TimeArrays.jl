@@ -63,9 +63,12 @@ function Base.replace(f::Function, t_array::TimeArray; count = length(t_array))
 end
 
 """
-    append!(t_array::TimeArray, a_values::Vector{TimeTick}; ) 
+    append!(t_array::TimeArray, items::AbstractVector{TimeTick}) -> TimeArray
 
-Add new values from `a_values` to `t_array and sorts them by date in ascending order
+Add new values from `items` to `t_array` and sorts them by date in ascending order.
+
+!!! warning
+    Avoid inserting data in small batches, as each call to the append method triggers sorting.
 
 ## Examples
 
@@ -94,16 +97,16 @@ julia> append!(t_array, a_values)
  TimeTick(2024-01-03T00:00:00, 3.0)
 ```
 """
-function Base.append!(t_array::TimeArray, a_values::AbstractVector{TimeTick{T,V}}) where {T<:TimeLike,V}
-    append!(t_array.values, a_values)
-    sort!(t_array.values, by = ta_timestamp)
-    t_array.length[] += length(a_values)
+function Base.append!(t_array::TimeArray{T,V}, items::AbstractVector{TimeTick{T,V}}) where {T,V}
+    values = ta_values(t_array)
+    append!(values, items)
+    return TimeArray{T,V}(values)
 end
 
 """
-    vcat(l_array::TimeArray, r_values::TimeArray) -> TimeArray
+    vcat(l_array::TimeArray, r_array::TimeArray) -> TimeArray
 
-Concatenate two `TimeArray` vertically.
+Concatenates two `TimeArray` objects vertically.
 
 ## Examples
 
@@ -132,14 +135,13 @@ julia> vcat(t_array_1, t_array_2)
  TimeTick(2024-01-04T00:00:00, 1.0)
 ```
 """
-function Base.vcat(l_array::TimeArray, r_array::TimeArray)
-    combined_values = [l_array.values; r_array.values]
-    sort!(combined_values, by = ta_timestamp)
-    return TimeArray(combined_values)
+function Base.vcat(l_array::TimeArray{T1,V1}, r_array::TimeArray{T2,V2}) where {T1,V1,T2,V2}
+    values = vcat(ta_values(l_array), ta_values(r_array))
+    return TimeArray{promote_type(T1,T2),promote_type(V1,V2)}(values)
 end
 
 """
-    cumsum(t_array::TimeArray) -> TimeArray
+    cumsum(t_array::TimeArray; kw...) -> TimeArray
 
 Cumulative sum along the TimeTick values.
 
@@ -161,11 +163,11 @@ julia> cumsum(t_array)
  TimeTick(2024-01-03T00:00:00, 6.0)
 ```
 """
-function Base.cumsum(t_array::TimeArray)
-    cum_values = cumsum(ta_value.(ta_values(t_array)))
-    cum_ticks = ta_timestamp.(ta_values(t_array))
-        
-    return TimeArray(cum_ticks, cum_values)
+function Base.cumsum(t_array::TimeArray{T,V}; kw...) where {T,V}
+    values = ta_values(t_array)
+    timestamps = map(ta_timestamp, values)
+    timevalues = map(ta_value, values)
+    return TimeArray(timestamps, cumsum(timevalues; kw...))
 end
 
 """
